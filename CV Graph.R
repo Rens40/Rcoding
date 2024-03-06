@@ -1,46 +1,111 @@
-# Ensure required packages are installed and loaded
-required_packages <- c("devtools", "lares", "ggplot2")
-new_packages <- required_packages[!(required_packages %in% installed.packages()[,"Package"])]
-if(length(new_packages)) install.packages(new_packages)
-lapply(required_packages, library, character.only = TRUE)
+# Install package if it's not already installed
+if (!requireNamespace(c("devtools", "lares", "ggplot"), quietly = TRUE))
+  install.packages(c("devtools", "lares", "ggplot"))
 
-# Only install the latest version of 'lares' from GitHub if it's not already installed
-if (!"lares" %in% installed.packages()[,"Package"]) {
-  devtools::install_github("laresbernardo/lares")
+# All packages used below must be installed first
+library(devtools)
+# devtools::install_github("laresbernardo/lares")
+library(lares)
+library(ggplot2)
+
+
+today <- as.character(Sys.Date())
+
+
+### Edit from here ###
+cv <- data.frame(rbind(
+  c("M Educational Sciences: Learning in Interaction (research)", "UU", "Academic", "2022-09-01", today),
+  c("Pre-master Educational Sciences", "UU", "Academic", "2021-09-01", "2022-08-31"),
+  c("Teacher Education in Chemics", "FLOT", "Academic", "2016-09-01", "2021-08-31"),
+  c("Chemics Teacher", "BLC", "Work Experience", "2018-08-10", "2019-09-01"),
+  c("Chemics Teacher", "BLC", "Work Experience", "2019-09-01", "2021-07-01"),
+  c("Chemics Teacher", "Intership", "Work Experience", "2015-11-19", "2016-04-21"), # van Maerlantlyceoum 
+  c("Chemics Teacher", "Intership", "Work Experience", "2017-08-28", "2018-04-23"), # Stella Maris College
+  c("Internship: Study development & data collection", "UU", "Work Experience", "2023-08-31", "2024-01-31"),
+  c("Awareness Project", "UU", "Extra", "2023-05-01", today),
+  c("Eye-tracking Network NL-BE", NA, "Extra", "2019-01-01", today),
+  c("SIG Group", NA, "Extra", "2019-12-01", today)
+))
+### Edit until here ###
+
+
+order <- c("Role", "Place", "Type", "Start", "End")
+colnames(cv) <- order
+
+
+plot_timeline2 <- function(event, start, end = start + 1, label = NA, group = NA,
+                           title = "Curriculum Vitae Timeline", subtitle = "Antoine Soetewey",
+                           size = 7, colour = "orange", save = FALSE, subdir = NA) {
+  df <- data.frame(
+    Role = as.character(event), Place = as.character(label),
+    Start = lubridate::date(start), End = lubridate::date(end),
+    Type = group
+  )
+  cvlong <- data.frame(pos = rep(
+    as.numeric(rownames(df)),
+    2
+  ), name = rep(as.character(df$Role), 2), type = rep(factor(df$Type,
+                                                             ordered = TRUE
+  ), 2), where = rep(
+    as.character(df$Place),
+    2
+  ), value = c(df$Start, df$End), label_pos = rep(df$Start +
+                                                    floor((df$End - df$Start) / 2), 2))
+  maxdate <- max(df$End)
+  p <- ggplot(cvlong, aes(
+    x = value, y = reorder(name, -pos),
+    label = where, group = pos
+  )) +
+    geom_vline(
+      xintercept = maxdate,
+      alpha = 0.8, linetype = "dotted"
+    ) +
+    labs(
+      title = title,
+      subtitle = subtitle, x = NULL, y = NULL, colour = NULL
+    ) +
+    theme_minimal() +
+    theme(panel.background = element_rect(
+      fill = "white",
+      colour = NA
+    ), axis.ticks = element_blank(), panel.grid.major.x = element_line(
+      linewidth = 0.25,
+      colour = "grey80"
+    ))
+  if (!is.na(cvlong$type)[1] | length(unique(cvlong$type)) >
+      1) {
+    p <- p + geom_line(aes(color = type), linewidth = size) +
+      facet_grid(type ~ ., scales = "free", space = "free") +
+      guides(colour = "none") +
+      scale_colour_manual(values = c("#BCCACB", "#00BA38", "#4A6F73")) +
+      theme(strip.text.y = element_text(size = 10))
+  } else {
+    p <- p + geom_line(linewidth = size)
+  }
+  p <- p + geom_label(aes(x = label_pos),
+                      colour = "black",
+                      size = 2, alpha = 0.7
+  )
+  if (save) {
+    file_name <- "cv_timeline.png"
+    if (!is.na(subdir)) {
+      dir.create(file.path(getwd(), subdir), recursive = T)
+      file_name <- paste(subdir, file_name, sep = "/")
+    }
+    p <- p + ggsave(file_name, width = 8, height = 6)
+    message(paste("Saved plot as", file_name))
+  }
+  return(p)
 }
 
-# Current date
-today <- Sys.Date()
 
-# Curriculum vitae data
-cv_data <- data.frame(
-  Role = c("M Educational Sciences: Learning in Interaction (research)",
-           "Pre-master Educational Sciences",
-           "Teacher Education in Chemistry",
-           "Teacher education in Chemics",
-           "Internship: Study development & data collection",
-           "Awareness Project",
-           "Eye-tracking Network NL-BE",
-           "Watch Me Project"),
-  Place = c("UU", "UU", "FLOT", "BLC", "UU", "UU", NA, NA),
-  Type = c("Academic", "Academic", "Academic", "Work Experience", "Work Experience", "Extra", "Extra", "Extra"),
-  Start = as.Date(c("2022-09-01", "2021-09-01", "2015-09-01", "2019-09-01", "2023-08-31", "2023-05-01", "2019-12-01", "2022-11-01")),
-  End = as.Date(c(today, "2022-08-31", "2020-08-31", "2021-07-01", "2024-01-31", today, today, "2023-07-01"))
-)
 
-# Function to plot curriculum vitae timeline
-plot_timeline2 <- function(cv, title = "Curriculum Vitae Timeline", subtitle = "Your Name Here", size = 7, colour = "orange", save = FALSE, subdir = NULL) {
-  require(lubridate)
-  require(ggplot2)
-  
-  # Transform cv data for plotting
-  cv_long <- tidyr::pivot_longer(cv, cols = c(Start, End), names_to = "Phase", values_to = "Date") %>%
-    mutate(Phase = ifelse(Phase == "Start", 1, 2),
-           Role = factor(Role, levels = unique(cv$Role))) %>%
-    arrange(Role, Phase)
-  
-  # Plot
-  p <- ggplot(cv_long, aes(x = Date, y = Role, group = Role)) +
-    geom_line(aes(color = Type), size = size) +
-    geom_point(size = size / 2) +
-    scale_color_manual(values = c(Academic = "#4E79A7", "Work Experience
+
+plot_timeline2(
+  event = cv$Role,
+  start = cv$Start,
+  end = cv$End,
+  label = cv$Place,
+  group = cv$Type,
+  save = FALSE,
+  subtitle = " Rens van Haaren") # replace with your name
