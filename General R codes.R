@@ -1,7 +1,15 @@
 # instal a Library 
   install.packages('[InsertPackageName]')
     install.packages(c('readr', 'ggplot2', 'tidyr')) # instal more packages 
+    
+# Install package if it's not already installed
+    if (!requireNamespace("[InsertPackageName]", quietly = TRUE))
+      install.packages("[InsertPackageName]l")
 
+# read data formats 
+    read_excel(GradingKnowledge, sheet = [insert tab name]) # excel file 
+
+    
 ## Data manipulation 
   # print variable names dataaset
   print(names(data)) 
@@ -18,7 +26,8 @@
                        "old_level_2" = "new_level_2",
                        "old_level_3" = "new_level_3" 
                        ))
-  #saperate a variable
+  #saperate a variable 
+  library(dplyr)
   df <- df %>%
     separate([insertVariable], into = c("AOI", "Px"), sep = "_") 
   
@@ -55,5 +64,7 @@
   bibEntry <- bibEntry <- " [insert bibtext] "
   bibText <- toBibtex(bibEntry)
   writeLines(bibText, "/Users/rensvanhaaren/Documents/documenten/TOOLS/BiBfilesreferences.bib")
+  
+  
   
   
